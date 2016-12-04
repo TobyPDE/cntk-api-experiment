@@ -3,12 +3,21 @@ project(include/chianti)
 
 find_package( OpenCV REQUIRED )
 
-include_directories(include /media/toby/d/cntk/Include lib/eigen-3.3.0)
+enable_testing()
+
+include_directories(include lib/googletest-1.8.0/googlemock lib/googletest-1.8.0/googletest /media/toby/d/cntk/Include lib/eigen-3.3.0)
 link_directories(/media/toby/d/cntk/cntk/lib)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-#set(SOURCE_FILES main.cpp Common.cpp)
-#add_executable(cntk_demo ${SOURCE_FILES})
-add_executable(frrn src/main.cpp)
-#target_link_libraries(cntk_demo cntklibrary-2.0 cntkmath)
-target_link_libraries(frrn cntklibrary-2.0 cntkmath ${OpenCV_LIBS})
+add_subdirectory(lib/googletest-1.8.0)
+
+# Build the test suite
+add_executable(tests
+        test/layers.cpp
+        test/values.cpp)
+
+target_link_libraries(tests
+        cntklibrary-2.0
+        ${OpenCV_LIBS}
+        gtest gtest_main
+        gmock)

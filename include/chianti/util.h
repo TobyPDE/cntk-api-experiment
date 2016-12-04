@@ -12,7 +12,7 @@ namespace Chianti
          * @param condition The condition to assert
          * @param message The exception message that is used if the condition is not fulfilled
          */
-        void assertMsg(bool condition, const std::string & message)
+        inline void assertMsg(bool condition, const std::string & message)
         {
 
         }

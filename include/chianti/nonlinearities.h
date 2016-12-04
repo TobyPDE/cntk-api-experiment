@@ -7,7 +7,7 @@ namespace Chianti
         /*!
          * The ReLU non-linearity.
          */
-        CNTK::Variable rectify(const CNTK::Variable & x)
+        inline CNTK::Variable rectify(const CNTK::Variable & x)
         {
             return CNTK::ReLU(x);
         }

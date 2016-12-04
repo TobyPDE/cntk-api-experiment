@@ -174,9 +174,69 @@ namespace Chianti
              */
             CNTK::FunctionPtr build() const
             {
-                return nullptr;
+                // Determine the correct amount of padding
+                CNTK::NDShape lowerPad = {0};
+                CNTK::NDShape upperPad = {0};
+                std::vector<bool> autoPadding = {true};
+
+                if (Values::isActive<0>(this->_pad))
+                {
+                    const Values::ArrayValue<uint64_t, 2> padding = Values::get<0>(this->_pad);
+
+                    // The padding has been manually specified
+                    autoPadding = {false, false, false};
+                    lowerPad = {padding[0], padding[1], 0};
+                    upperPad = {padding[0], padding[1], 0};
+                }
+                else
+                {
+                    // Determine the special kind of padding to use
+                    const std::string & padding = Values::get<1>(this->_pad);
+
+                    if (padding == "full")
+                    {
+                        // Compute the convolution everywhere where the filter and the filters overlap at least one pixel
+                        autoPadding = {false, false, false};
+                        lowerPad = {this->_filterSize[0] - 1, this->_filterSize[1] - 1, 0};
+                        upperPad = {this->_filterSize[0] - 1, this->_filterSize[1] - 1, 0};
+                    }
+                    else if (padding == "same")
+                    {
+                        // Pad such that the input map has the same size as the output map
+                        // Actually, nothing to do here.
+                        // This is the standard setting
+                    }
+                    else if (padding == "valid")
+                    {
+                        // No padding
+                        // Only compute activations where the input and the filter fully overlap
+                        autoPadding = {false, false, false};
+                        lowerPad = {0, 0, 0};
+                        upperPad = {0, 0, 0};
+                    }
+                    else
+                    {
+                        // TODO: Throw exception
+                    }
+                }
+
+                size_t numInputChannels = this->input.Shape()[this->input.Shape().Rank() - 1];
+
+                // Create the parameter
+                auto convParams = CNTK::Parameter({ this->_filterSize[0], this->_filterSize[1], numInputChannels, this->_numFilters }, CNTK::DataType::Float, CNTK::ConstantInitializer(0), this->device);
+
+                return Convolution(convParams, this->input, { this->_stride[0], this->_stride[1], numInputChannels }, { true }, autoPadding, lowerPad, upperPad);
             }
         };
+    }
 
+    template<int rank>
+    CNTK::Variable resolveParameter(const ::Chianti::Values::CompositeValue<Eigen::Tensor<float, rank>, CNTK::Variable, bool, CNTK::ParameterInitializer> & v)
+    {
+        // TODO
+        if (::Chianti::Values::isActive<0>(v))
+        {
+            // Create the parameter from a theano tensor
+        }
     }
 }

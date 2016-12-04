@@ -11,97 +11,6 @@ namespace Chianti
 {
     namespace Values
     {
-        /*!
-         * Abstract class for initialized atomic values.
-         */
-        template <class T>
-        class AbstractAtomicValue {
-        public:
-            /*!
-             * Default constructor that initializes the value.
-             */
-            AbstractAtomicValue() : value(0) {}
-
-            /*!
-             * Constructor that allows a user-defined initialization.
-             *
-             * @param x The initial value
-             */
-            AbstractAtomicValue(T x) : value(x) {}
-
-            /*!
-             * Converts the wrapper to a base value.
-             *
-             * @return The value of the literal.
-             */
-            operator T() const
-            {
-                return value;
-            }
-
-        protected:
-            /*!
-             * The actual value.
-             */
-            T value;
-        };
-
-        /**
-         * Represents an initialized 64 bit integer value
-         */
-        class Int64Value : public AbstractAtomicValue<int64_t> {
-        public:
-            using AbstractAtomicValue::AbstractAtomicValue;
-        };
-
-        /**
-         * Represents an initialized unsigned 64 bit integer value
-         */
-        class UInt64Value : public AbstractAtomicValue<uint64_t> {
-        public:
-            using AbstractAtomicValue::AbstractAtomicValue;
-        };
-
-        /**
-         * Represents an initialized 32 bit integer value
-         */
-        class Int32Value : public AbstractAtomicValue<int32_t> {
-        public:
-            using AbstractAtomicValue::AbstractAtomicValue;
-        };
-
-        /**
-         * Represents an initialized unsigned 32 bit integer value
-         */
-        class UInt32Value : public AbstractAtomicValue<uint32_t> {
-        public:
-            using AbstractAtomicValue::AbstractAtomicValue;
-        };
-
-        /**
-         * Represents an initialized 32 bit floating point value
-         */
-        class Float32Value : public AbstractAtomicValue<float> {
-        public:
-            using AbstractAtomicValue::AbstractAtomicValue;
-        };
-
-        /**
-         * Represents an initialized 64 bit floating point value
-         */
-        class Float64Value : public AbstractAtomicValue<double> {
-        public:
-            using AbstractAtomicValue::AbstractAtomicValue;
-        };
-
-        /**
-         * Represents a boolean value that is initialized to false
-         */
-        class BoolValue : public AbstractAtomicValue<bool> {
-        public:
-            using AbstractAtomicValue::AbstractAtomicValue;
-        };
-
         /**
          * This is a fixed sized array value.
          */
@@ -139,7 +48,7 @@ namespace Chianti
              *
              * @param initializerList List of array values
              */
-            ArrayValue(std::initializer_list<size_t> initializerList)
+            ArrayValue(std::initializer_list<T> initializerList)
             {
                 // Make sure that the correct number of elements has been specified
                 ::Chianti::Util::assertMsg(initializerList.size() == S, "TODO");
@@ -265,6 +174,59 @@ namespace Chianti
             bool isActive = false;
         };
 
+        /*!
+         * This is a node in the composite value list.
+         * This is a specialization for array values to make initialization possible.
+         */
+        template<class T, size_t S, class... Ts>
+        class CompositeValue<ArrayValue<T, S>, Ts...> : public CompositeValue<Ts...> {
+        public:
+            /*!
+             * Default constructor
+             */
+            CompositeValue() {}
+
+            // Make sure that we can call the final constructor with all types
+            using CompositeValue<Ts...>::CompositeValue;
+
+            /*!
+             * Creates a new instance of the CompositeValue class.
+             *
+             * @param v The value that shall be assigned to the node.
+             */
+            CompositeValue(const ArrayValue<T, S> & v) : value(v), isActive(true) {}
+
+            /*!
+             * Creates a new instance of the CompositeValue class.
+             *
+             * @param v The value that shall be assigned to the node.
+             */
+            CompositeValue(const std::array<T, S> & v) : value(v), isActive(true) {}
+
+            /*!
+             * Creates a new instance of the CompositeValue class.
+             *
+             * @param v The value that shall be assigned to the node.
+             */
+            CompositeValue(T v) : value(v), isActive(true) {}
+
+            /*!
+             * Creates a new instance of the CompositeValue class.
+             *
+             * @param v The value that shall be assigned to the node.
+             */
+            CompositeValue(std::initializer_list<T> v) : value(v), isActive(true) {}
+
+            /*!
+             * This is the value that is stored here
+             */
+            ArrayValue<T, S> value;
+            /*!
+             * Indicates whether is the value that has been set
+             */
+            bool isActive = false;
+        };
+
         template <size_t, class>
         class CompositeValueType {};
 
@@ -290,7 +252,7 @@ namespace Chianti
          * Returns the k-th value of a composite value.
          */
         template <size_t k, class T, class... Ts>
-        typename std::enable_if<k == 0, T>::type get(const CompositeValue<T, Ts...> & v)
+        inline typename std::enable_if<k == 0, T>::type get(const CompositeValue<T, Ts...> & v)
         {
             return v.value;
         };
@@ -299,7 +261,7 @@ namespace Chianti
          * Returns the k-th value of a composite value.
          */
         template <size_t k, class T, class... Ts>
-        typename std::enable_if<k != 0, typename CompositeValueType<k, CompositeValue<T, Ts...>>::type>::type get(const CompositeValue<T, Ts...> & v)
+        inline typename std::enable_if<k != 0, typename CompositeValueType<k, CompositeValue<T, Ts...>>::type>::type get(const CompositeValue<T, Ts...> & v)
         {
             return get<k - 1, Ts...>(v);
         };
@@ -311,7 +273,7 @@ namespace Chianti
          * @return Whether or not the k-th value is active
          */
         template <size_t k, class... Ts>
-        typename std::enable_if<k == 0, bool>::type isActive(const CompositeValue<Ts...> & v)
+        inline typename std::enable_if<k == 0, bool>::type isActive(const CompositeValue<Ts...> & v)
         {
             return v.isActive;
         };
@@ -323,7 +285,7 @@ namespace Chianti
          * @return Whether or not the k-th value is active
          */
         template <size_t k, class T, class... Ts>
-        typename std::enable_if<k != 0, bool>::type isActive(const CompositeValue<T, Ts...> & v)
+        inline typename std::enable_if<k != 0, bool>::type isActive(const CompositeValue<T, Ts...> & v)
         {
             const CompositeValue<Ts...>& base = v;
             return isActive<k - 1>(base);
