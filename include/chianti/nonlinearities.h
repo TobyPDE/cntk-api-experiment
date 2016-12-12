@@ -7,7 +7,7 @@ namespace Chianti
         /*!
          * The ReLU non-linearity.
          */
-        inline CNTK::Variable rectify(const CNTK::Variable & x)
+        inline CNTK::FunctionPtr rectify(CNTK::FunctionPtr x)
         {
             return CNTK::ReLU(x);
         }
@@ -15,7 +15,7 @@ namespace Chianti
         /*!
          * No linearity / linear activation function.
          */
-        inline CNTK::Variable linear(const CNTK::Variable & x)
+        inline CNTK::FunctionPtr linear(CNTK::FunctionPtr x)
         {
             return x;
         }

@@ -63,6 +63,33 @@ namespace Chianti
         }
 
         /*!
+         * Converts a Chianti parameter to a CNTK parameter.
+         *
+         * @tparam rank The rank of the tensor
+         * @param v The parameter value
+         * @param shape The shape of the final parameter
+         * @return The CNTK parameter
+         */
+        template<int rank>
+        inline CNTK::Variable resolveParameter(const Values::CompositeValue<Eigen::Tensor<float, rank>, CNTK::ParameterInitializer, bool> & v, const CNTK::NDShape & shape, const CNTK::DeviceDescriptor & device)
+        {
+            if (Values::isActive<0>(v))
+            {
+                return resolveParameter(Values::CompositeValue<Eigen::Tensor<float, rank>, CNTK::ParameterInitializer>(Values::get<0>(v)), shape, device);
+            }
+            else if (Values::isActive<1>(v))
+            {
+                // Parameter initializer to parameter
+                return resolveParameter(Values::CompositeValue<Eigen::Tensor<float, rank>, CNTK::ParameterInitializer>(Values::get<1>(v)), shape, device);
+            }
+            else
+            {
+                // No parameter is defined
+                // TODO: Throw exception
+            }
+        }
+
+        /*!
          * This is the base class for all layers.
          */
         class AbstractLayer
@@ -141,27 +168,27 @@ namespace Chianti
             /*!
              * The size of the filters.
              */
-            ::Chianti::Values::ArrayValue<uint64_t, 2> _filterSize;
+            Values::ArrayValue<uint64_t, 2> _filterSize;
             /*!
              * The amount of padding on each side
              */
-            ::Chianti::Values::CompositeValue<::Chianti::Values::ArrayValue<uint64_t, 2>, std::string, uint64_t> _pad;
+            Values::CompositeValue<Values::ArrayValue<uint64_t, 2>, std::string, uint64_t> _pad;
             /*!
              * The filter stride.
              */
-            ::Chianti::Values::ArrayValue<uint64_t, 2> _stride;
+            Values::ArrayValue<uint64_t, 2> _stride;
             /*!
              * Filter kernel.
              */
-            ::Chianti::Values::CompositeValue<Eigen::Tensor<float, 4>, CNTK::ParameterInitializer> _W;
+            Values::CompositeValue<Eigen::Tensor<float, 4>, CNTK::ParameterInitializer> _W;
             /*!
              * Bias parameter
              */
-            ::Chianti::Values::CompositeValue<Eigen::Tensor<float, 1>, CNTK::ParameterInitializer, bool> _b;
+            Values::CompositeValue<Eigen::Tensor<float, 3>, CNTK::ParameterInitializer, bool> _b;
             /*!
              * Non-linearity
              */
-            ::Chianti::Values::CompositeValue<std::function<CNTK::Variable(const CNTK::Variable&)>, bool> _nonLinearity;
+            std::function<CNTK::FunctionPtr(CNTK::FunctionPtr)> _nonLinearity;
 
         public:
             /*!
@@ -259,13 +286,46 @@ namespace Chianti
 
                 size_t numInputChannels = this->input.Shape()[this->input.Shape().Rank() - 1];
 
+                // Set up the convolution
+                // ----------------------
                 // Determine the shape of the convolution
                 CNTK::NDShape filterShape = { this->_filterSize[0], this->_filterSize[1], numInputChannels, this->_numFilters };
-
-                // Create the parameter
                 auto convParams = resolveParameter<4>(this->_W, filterShape, this->device);
+                CNTK::FunctionPtr network = Convolution(convParams, this->input, { this->_stride[0], this->_stride[1], numInputChannels }, { true }, autoPadding, lowerPad, upperPad);
 
-                return Convolution(convParams, this->input, { this->_stride[0], this->_stride[1], numInputChannels }, { true }, autoPadding, lowerPad, upperPad);
+                // Set up the bias term
+                // --------------------
+                if (!Values::isActive<2>(this->_b) || Values::get<2>(this->_b))
+                {
+                    // Add a bias term
+                    CNTK::NDShape biasShape = { 1, 1, this->_numFilters };
+
+                    // Create the parameter
+                    if (Values::isActive<2>(this->_b))
+                    {
+                        // The user didn't define anything
+                        // Create a 0 initialized parameter
+                        auto biasParams = CNTK::Parameter(biasShape, CNTK::DataType::Float, CNTK::ConstantInitializer(0), this->device);
+                        network = CNTK::Plus(network, biasParams);
+                    }
+                    else
+                    {
+                        // If the user specified an Eigen tensor, then the first two dimensions must have size 1
+                        if (Values::isActive<0>(this->_b))
+                        {
+                            // TODO: Check size
+                        }
+
+                        // The user specified the bias
+                        auto biasParms = resolveParameter<3>(this->_b, biasShape, this->device);
+                        network = CNTK::Plus(network, biasParms);
+                    }
+                }
+
+                // Apply non-linearity
+                network = this->_nonLinearity(network);
+
+                return network;
             }
         };
     }
