@@ -22,14 +22,13 @@ namespace Chianti
         }
 
         /*!
-         * Creates a CNTK value from an Eigen tensor.
+         * Creates a view from a tensor.
          *
          * @param tensor The Eigen tensor
-         * @param readOnly If true, a read-only value is created.
          * @return The CNTK value
          */
         template <int rank, typename T = float>
-        inline CNTK::ValuePtr tensorToValue(Eigen::Tensor<T, rank> & tensor, bool readOnly = true)
+        inline CNTK::NDArrayViewPtr tensorToView(const Eigen::Tensor<T, rank> & tensor)
         {
             auto device = CNTK::DeviceDescriptor::CPUDevice();
 
@@ -40,8 +39,52 @@ namespace Chianti
                 shape = shape.AppendShape({static_cast<size_t>(tensor.dimension(n))});
             }
 
-            auto inputView = CNTK::MakeSharedObject<CNTK::NDArrayView>(shape, tensor.data(), tensor.size(), device, readOnly);
-            return CNTK::MakeSharedObject<CNTK::Value>(inputView);
+            return CNTK::MakeSharedObject<CNTK::NDArrayView>(shape, tensor.data(), tensor.size(), device);
+        }
+
+        /*!
+         * Creates a view from a tensor.
+         *
+         * @param tensor The Eigen tensor
+         * @return The CNTK value
+         */
+        template <int rank, typename T = float>
+        inline CNTK::NDArrayViewPtr tensorToView(Eigen::Tensor<T, rank> & tensor)
+        {
+            auto device = CNTK::DeviceDescriptor::CPUDevice();
+
+            // Extract the shape from the tensor
+            CNTK::NDShape shape;
+            for (size_t n = 0; n < static_cast<size_t>(rank); n++)
+            {
+                shape = shape.AppendShape({static_cast<size_t>(tensor.dimension(n))});
+            }
+
+            return CNTK::MakeSharedObject<CNTK::NDArrayView>(shape, tensor.data(), tensor.size(), device, false);
+        }
+
+        /*!
+         * Creates a CNTK value from an Eigen tensor.
+         *
+         * @param tensor The Eigen tensor
+         * @return The CNTK value
+         */
+        template <int rank, typename T = float>
+        inline CNTK::ValuePtr tensorToValue(Eigen::Tensor<T, rank> & tensor)
+        {
+            return CNTK::MakeSharedObject<CNTK::Value>(tensorToView(tensor));
+        }
+
+        /*!
+         * Creates a CNTK value from an Eigen tensor.
+         *
+         * @param tensor The Eigen tensor
+         * @return The CNTK value
+         */
+        template <int rank, typename T = float>
+        inline CNTK::ValuePtr tensorToValue(const Eigen::Tensor<T, rank> & tensor)
+        {
+            return CNTK::MakeSharedObject<CNTK::Value>(tensorToView(tensor));
         }
 
         /*!

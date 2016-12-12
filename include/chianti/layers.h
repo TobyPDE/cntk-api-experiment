@@ -25,6 +25,45 @@ namespace Chianti
     namespace Layers
     {
         /*!
+         * Converts a Chianti parameter to a CNTK parameter.
+         *
+         * @tparam rank The rank of the tensor
+         * @param v The parameter value
+         * @param shape The shape of the final parameter
+         * @return The CNTK parameter
+         */
+        template<int rank>
+        inline CNTK::Variable resolveParameter(const Values::CompositeValue<Eigen::Tensor<float, rank>, CNTK::Variable, CNTK::ParameterInitializer> & v, const CNTK::NDShape & shape, const CNTK::DeviceDescriptor & device)
+        {
+            if (Values::isActive<0>(v))
+            {
+                // 1. eigen tensor to parameter
+                const Eigen::Tensor<float, rank> & t = Values::get<0>(v);
+
+                // First: Create a view from the tensor
+                auto view = Util::tensorToView<rank, float>(t);
+
+                // Create the parameter from an Eigen tensor
+                return CNTK::Parameter(view);
+            }
+            else if (Values::isActive<1>(v))
+            {
+                // 2. CNTK variable to parameter
+                return Values::get<1>(v);
+            }
+            else if (Values::isActive<2>(v))
+            {
+                // Parameter initializer to parameter
+                return CNTK::Parameter(shape, CNTK::DataType::Float, Values::get<2>(v), device);
+            }
+            else
+            {
+                // This should never happen
+                // TODO: Throw exception
+            }
+        }
+
+        /*!
          * This is the base class for all layers.
          */
         class AbstractLayer
@@ -115,7 +154,7 @@ namespace Chianti
             /*!
              * Filter kernel.
              */
-            ::Chianti::Values::CompositeValue<Eigen::Tensor<float, 3>, CNTK::Variable, CNTK::ParameterInitializer> _W;
+            ::Chianti::Values::CompositeValue<Eigen::Tensor<float, 4>, CNTK::Variable, CNTK::ParameterInitializer> _W;
             /*!
              * Bias parameter
              */
@@ -221,22 +260,14 @@ namespace Chianti
 
                 size_t numInputChannels = this->input.Shape()[this->input.Shape().Rank() - 1];
 
+                // Determine the shape of the convolution
+                CNTK::NDShape filterShape = { this->_filterSize[0], this->_filterSize[1], numInputChannels, this->_numFilters };
+
                 // Create the parameter
-                auto convParams = CNTK::Parameter({ this->_filterSize[0], this->_filterSize[1], numInputChannels, this->_numFilters }, CNTK::DataType::Float, CNTK::ConstantInitializer(1), this->device);
+                auto convParams = resolveParameter<4>(this->_W, filterShape, this->device);
 
                 return Convolution(convParams, this->input, { this->_stride[0], this->_stride[1], numInputChannels }, { true }, autoPadding, lowerPad, upperPad);
             }
         };
-    }
-
-    template<int rank>
-    CNTK::Variable resolveParameter(const ::Chianti::Values::CompositeValue<Eigen::Tensor<float, rank>, CNTK::Variable, bool, CNTK::ParameterInitializer> & v)
-    {
-        // TODO
-        if (::Chianti::Values::isActive<0>(v))
-        {
-            // Create the parameter from an Eigen tensor
-            // First: Create a view from the tensor
-        }
     }
 }
