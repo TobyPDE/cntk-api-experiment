@@ -24,7 +24,6 @@ namespace Chianti
 {
     namespace Layers
     {
-
         /*!
          * This is the base class for all layers.
          */
@@ -108,7 +107,7 @@ namespace Chianti
             /*!
              * The amount of padding on each side
              */
-            ::Chianti::Values::CompositeValue<::Chianti::Values::ArrayValue<uint64_t, 2>, std::string> _pad;
+            ::Chianti::Values::CompositeValue<::Chianti::Values::ArrayValue<uint64_t, 2>, std::string, uint64_t> _pad;
             /*!
              * The filter stride.
              */
@@ -116,7 +115,7 @@ namespace Chianti
             /*!
              * Filter kernel.
              */
-            ::Chianti::Values::CompositeValue<Eigen::Tensor<float, 3>, CNTK::Variable, bool, CNTK::ParameterInitializer> _W;
+            ::Chianti::Values::CompositeValue<Eigen::Tensor<float, 3>, CNTK::Variable, CNTK::ParameterInitializer> _W;
             /*!
              * Bias parameter
              */
@@ -197,8 +196,8 @@ namespace Chianti
                     {
                         // Compute the convolution everywhere where the filter and the filters overlap at least one pixel
                         autoPadding = {false, false, false};
-                        lowerPad = {this->_filterSize[0] - 1, this->_filterSize[1] - 1, 0};
-                        upperPad = {this->_filterSize[0] - 1, this->_filterSize[1] - 1, 0};
+                        lowerPad = {this->_filterSize[0], this->_filterSize[1], 0};
+                        upperPad = {this->_filterSize[0], this->_filterSize[1], 0};
                     }
                     else if (padding == "same")
                     {
@@ -223,7 +222,7 @@ namespace Chianti
                 size_t numInputChannels = this->input.Shape()[this->input.Shape().Rank() - 1];
 
                 // Create the parameter
-                auto convParams = CNTK::Parameter({ this->_filterSize[0], this->_filterSize[1], numInputChannels, this->_numFilters }, CNTK::DataType::Float, CNTK::ConstantInitializer(0), this->device);
+                auto convParams = CNTK::Parameter({ this->_filterSize[0], this->_filterSize[1], numInputChannels, this->_numFilters }, CNTK::DataType::Float, CNTK::ConstantInitializer(1), this->device);
 
                 return Convolution(convParams, this->input, { this->_stride[0], this->_stride[1], numInputChannels }, { true }, autoPadding, lowerPad, upperPad);
             }
@@ -236,7 +235,8 @@ namespace Chianti
         // TODO
         if (::Chianti::Values::isActive<0>(v))
         {
-            // Create the parameter from a theano tensor
+            // Create the parameter from an Eigen tensor
+            // First: Create a view from the tensor
         }
     }
 }

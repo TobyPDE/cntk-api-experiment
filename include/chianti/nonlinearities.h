@@ -11,5 +11,13 @@ namespace Chianti
         {
             return CNTK::ReLU(x);
         }
+
+        /*!
+         * No linearity / linear activation function.
+         */
+        inline CNTK::Variable linear(const CNTK::Variable & x)
+        {
+            return x;
+        }
     }
 }
