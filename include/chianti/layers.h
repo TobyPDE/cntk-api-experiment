@@ -33,7 +33,7 @@ namespace Chianti
          * @return The CNTK parameter
          */
         template<int rank>
-        inline CNTK::Variable resolveParameter(const Values::CompositeValue<Eigen::Tensor<float, rank>, CNTK::Variable, CNTK::ParameterInitializer> & v, const CNTK::NDShape & shape, const CNTK::DeviceDescriptor & device)
+        inline CNTK::Variable resolveParameter(const Values::CompositeValue<Eigen::Tensor<float, rank>, CNTK::ParameterInitializer> & v, const CNTK::NDShape & shape, const CNTK::DeviceDescriptor & device)
         {
             if (Values::isActive<0>(v))
             {
@@ -48,13 +48,8 @@ namespace Chianti
             }
             else if (Values::isActive<1>(v))
             {
-                // 2. CNTK variable to parameter
-                return Values::get<1>(v);
-            }
-            else if (Values::isActive<2>(v))
-            {
                 // Parameter initializer to parameter
-                return CNTK::Parameter(shape, CNTK::DataType::Float, Values::get<2>(v), device);
+                return CNTK::Parameter(shape, CNTK::DataType::Float, Values::get<1>(v), device);
             }
             else
             {
@@ -154,11 +149,11 @@ namespace Chianti
             /*!
              * Filter kernel.
              */
-            ::Chianti::Values::CompositeValue<Eigen::Tensor<float, 4>, CNTK::Variable, CNTK::ParameterInitializer> _W;
+            ::Chianti::Values::CompositeValue<Eigen::Tensor<float, 4>, CNTK::ParameterInitializer> _W;
             /*!
              * Bias parameter
              */
-            ::Chianti::Values::CompositeValue<Eigen::Tensor<float, 1>, CNTK::Variable, bool, CNTK::ParameterInitializer> _b;
+            ::Chianti::Values::CompositeValue<Eigen::Tensor<float, 1>, CNTK::ParameterInitializer, bool> _b;
             /*!
              * Non-linearity
              */
