@@ -43,8 +43,12 @@ namespace Chianti
                 // First: Create a view from the tensor
                 auto view = Util::tensorToView<rank, float>(t);
 
+                // Second: Create a parameter array on the device and copy the data
+                auto params = CNTK::MakeSharedObject<CNTK::NDArrayView>(CNTK::DataType::Float, shape, device);
+                params->CopyFrom(*view);
+
                 // Create the parameter from an Eigen tensor
-                return CNTK::Parameter(view);
+                return CNTK::Parameter(params);
             }
             else if (Values::isActive<1>(v))
             {

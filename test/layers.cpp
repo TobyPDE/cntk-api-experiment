@@ -5,7 +5,7 @@
 TEST(Conv2DLayer, pad_shape_same)
 {
     // Arrange
-    auto device = CNTK::DeviceDescriptor::CPUDevice();
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
     auto X = CNTK::InputVariable({ 5, 5, 1 }, CNTK::DataType::Float);
     CNTK::FunctionPtr network;
 
@@ -26,7 +26,7 @@ TEST(Conv2DLayer, pad_shape_same)
 TEST(Conv2DLayer, pad_shape_full)
 {
     // Arrange
-    auto device = CNTK::DeviceDescriptor::CPUDevice();
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
     auto X = CNTK::InputVariable({ 5, 5, 1 }, CNTK::DataType::Float);
     CNTK::FunctionPtr network;
 
@@ -47,7 +47,7 @@ TEST(Conv2DLayer, pad_shape_full)
 TEST(Conv2DLayer, pad_shape_valid)
 {
     // Arrange
-    auto device = CNTK::DeviceDescriptor::CPUDevice();
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
     auto X = CNTK::InputVariable({ 5, 5, 1 }, CNTK::DataType::Float);
     CNTK::FunctionPtr network;
 
@@ -68,7 +68,7 @@ TEST(Conv2DLayer, pad_shape_valid)
 TEST(Conv2DLayer, pad_shape_0)
 {
     // Arrange
-    auto device = CNTK::DeviceDescriptor::CPUDevice();
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
     auto X = CNTK::InputVariable({ 5, 5, 1 }, CNTK::DataType::Float);
     CNTK::FunctionPtr network;
 
@@ -89,7 +89,7 @@ TEST(Conv2DLayer, pad_shape_0)
 TEST(Conv2DLayer, pad_shape_1)
 {
     // Arrange
-    auto device = CNTK::DeviceDescriptor::CPUDevice();
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
     auto X = CNTK::InputVariable({ 5, 5, 1 }, CNTK::DataType::Float);
     CNTK::FunctionPtr network;
 
@@ -110,7 +110,7 @@ TEST(Conv2DLayer, pad_shape_1)
 TEST(Conv2DLayer, pad_shape_2)
 {
     // Arrange
-    auto device = CNTK::DeviceDescriptor::CPUDevice();
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
     auto X = CNTK::InputVariable({ 5, 5, 1 }, CNTK::DataType::Float);
     CNTK::FunctionPtr network;
 
@@ -131,7 +131,7 @@ TEST(Conv2DLayer, pad_shape_2)
 TEST(Conv2DLayer, pad_shape_3)
 {
     // Arrange
-    auto device = CNTK::DeviceDescriptor::CPUDevice();
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
     auto X = CNTK::InputVariable({ 5, 5, 1 }, CNTK::DataType::Float);
     CNTK::FunctionPtr network;
 
@@ -152,7 +152,7 @@ TEST(Conv2DLayer, pad_shape_3)
 TEST(Conv2DLayer, stride_shape_1)
 {
     // Arrange
-    auto device = CNTK::DeviceDescriptor::CPUDevice();
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
     auto X = CNTK::InputVariable({ 5, 5, 1 }, CNTK::DataType::Float);
     CNTK::FunctionPtr network;
 
@@ -173,7 +173,7 @@ TEST(Conv2DLayer, stride_shape_1)
 TEST(Conv2DLayer, stride_shape_2)
 {
     // Arrange
-    auto device = CNTK::DeviceDescriptor::CPUDevice();
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
     auto X = CNTK::InputVariable({ 5, 5, 1 }, CNTK::DataType::Float);
     CNTK::FunctionPtr network;
 
@@ -194,7 +194,7 @@ TEST(Conv2DLayer, stride_shape_2)
 TEST(Conv2DLayer, stride_shape_2_1)
 {
     // Arrange
-    auto device = CNTK::DeviceDescriptor::CPUDevice();
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
     auto X = CNTK::InputVariable({ 5, 5, 1 }, CNTK::DataType::Float);
     CNTK::FunctionPtr network;
 
@@ -215,7 +215,7 @@ TEST(Conv2DLayer, stride_shape_2_1)
 TEST(Conv2DLayer, stride_shape_1_2)
 {
     // Arrange
-    auto device = CNTK::DeviceDescriptor::CPUDevice();
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
     auto X = CNTK::InputVariable({ 5, 5, 1 }, CNTK::DataType::Float);
     CNTK::FunctionPtr network;
 
@@ -236,7 +236,7 @@ TEST(Conv2DLayer, stride_shape_1_2)
 TEST(Conv2DLayer, stride_pool)
 {
     // Arrange
-    auto device = CNTK::DeviceDescriptor::CPUDevice();
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
     auto X = CNTK::InputVariable({ 8, 8, 1 }, CNTK::DataType::Float);
     CNTK::FunctionPtr network;
 
@@ -257,7 +257,7 @@ TEST(Conv2DLayer, stride_pool)
 TEST(Conv2DLayer, W_initializer)
 {
     // Arrange
-    auto device = CNTK::DeviceDescriptor::CPUDevice();
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
     auto X = CNTK::InputVariable({ 3, 3, 1 }, CNTK::DataType::Float);
     CNTK::FunctionPtr network;
 
@@ -298,7 +298,7 @@ TEST(Conv2DLayer, W_initializer)
 TEST(Conv2DLayer, W_initializer_2)
 {
     // Arrange
-    auto device = CNTK::DeviceDescriptor::CPUDevice();
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
     auto X = CNTK::InputVariable({ 3, 3, 1 }, CNTK::DataType::Float);
     CNTK::FunctionPtr network;
 
@@ -339,7 +339,7 @@ TEST(Conv2DLayer, W_initializer_2)
 TEST(Conv2DLayer, W_eigen)
 {
     // Arrange
-    auto device = CNTK::DeviceDescriptor::CPUDevice();
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
     auto X = CNTK::InputVariable({ 3, 3, 1 }, CNTK::DataType::Float);
     CNTK::FunctionPtr network;
 
