@@ -10,8 +10,8 @@
 #include <string>
 #include <functional>
 
-#define MAKE_SETTER(className, functionName, parameterName) \
-className & functionName(const decltype(parameterName) & parameterName) {\
+#define MAKE_SETTER(functionName, parameterName) \
+Self & functionName(const decltype(parameterName) & parameterName) {\
     this->parameterName = parameterName; \
     return *this; \
 }
@@ -162,6 +162,8 @@ namespace Chianti
         class Conv2DLayer : public AbstractSingleInputLayer
         {
         public:
+            typedef Conv2DLayer Self;
+
             /*!
              * The number of filter kernels.
              */
@@ -173,7 +175,7 @@ namespace Chianti
             /*!
              * The amount of padding on each side
              */
-            Values::CompositeValue<Values::ArrayValue<uint64_t, 2>, std::string, uint64_t> _pad;
+            Values::CompositeValue<Values::ArrayValue<uint64_t, 2>, std::string> _pad;
             /*!
              * The filter stride.
              */
@@ -212,25 +214,25 @@ namespace Chianti
             // Define the getters and setters for the individual class members
 
             MAKE_GETTER(numFilters, _numFilters)
-            MAKE_SETTER(Conv2DLayer, numFilters, _numFilters)
+            MAKE_SETTER(numFilters, _numFilters)
 
             MAKE_GETTER(filterSize, _filterSize)
-            MAKE_SETTER(Conv2DLayer, filterSize, _filterSize)
+            MAKE_SETTER(filterSize, _filterSize)
 
             MAKE_GETTER(pad, _pad)
-            MAKE_SETTER(Conv2DLayer, pad, _pad)
+            MAKE_SETTER(pad, _pad)
 
             MAKE_GETTER(stride, _stride)
-            MAKE_SETTER(Conv2DLayer, stride, _stride)
+            MAKE_SETTER(stride, _stride)
 
             MAKE_GETTER(W, _W)
-            MAKE_SETTER(Conv2DLayer, W, _W)
+            MAKE_SETTER(W, _W)
 
             MAKE_GETTER(b, _b)
-            MAKE_SETTER(Conv2DLayer, b, _b)
+            MAKE_SETTER(b, _b)
 
             MAKE_GETTER(nonLinearity, _nonLinearity)
-            MAKE_SETTER(Conv2DLayer, nonLinearity, _nonLinearity)
+            MAKE_SETTER(nonLinearity, _nonLinearity)
 
             /*!
              * Converts the Chianti layer into a CNTK node.
@@ -246,7 +248,7 @@ namespace Chianti
 
                 if (Values::isActive<0>(this->_pad))
                 {
-                    const Values::ArrayValue<uint64_t, 2> padding = Values::get<0>(this->_pad);
+                    const auto padding = Values::get<0>(this->_pad);
 
                     // The padding has been manually specified
                     autoPadding = {false, false, false};
@@ -256,7 +258,7 @@ namespace Chianti
                 else
                 {
                     // Determine the special kind of padding to use
-                    const std::string & padding = Values::get<1>(this->_pad);
+                    const auto & padding = Values::get<1>(this->_pad);
 
                     if (padding == "full")
                     {
@@ -292,7 +294,14 @@ namespace Chianti
                 // Determine the shape of the convolution
                 CNTK::NDShape filterShape = { this->_filterSize[0], this->_filterSize[1], numInputChannels, this->_numFilters };
                 auto convParams = resolveParameter<4>(this->_W, filterShape, this->device);
-                CNTK::FunctionPtr network = Convolution(convParams, this->input, { this->_stride[0], this->_stride[1], numInputChannels }, { true }, autoPadding, lowerPad, upperPad);
+                CNTK::FunctionPtr network = Convolution(
+                        convParams,
+                        this->input,
+                        { this->_stride[0], this->_stride[1], numInputChannels },
+                        { true },
+                        autoPadding,
+                        lowerPad,
+                        upperPad);
 
                 // Set up the bias term
                 // --------------------
@@ -329,6 +338,158 @@ namespace Chianti
 
                 return network;
             }
+        };
+
+        /**
+         * Abstract pooling layer. Can do max pooling and average pooling.
+         */
+        class AbstractPool2DLayer : public AbstractSingleInputLayer
+        {
+        public:
+            typedef AbstractPool2DLayer Self;
+
+            /*!
+             * The size of the pooling region.
+             */
+            Values::ArrayValue<uint64_t, 2> _poolSize;
+            /*!
+             * The amount of padding on each side
+             */
+            Values::CompositeValue<Values::ArrayValue<uint64_t, 2>, std::string, bool> _pad;
+            /*!
+             * The pooling stride.
+             */
+            Values::ArrayValue<uint64_t, 2> _stride;
+
+        private:
+            /**
+             * The pooling type.
+             */
+            const CNTK::PoolingType poolingType;
+
+        protected:
+            /*!
+             * Initializes a new instance of the <Conv2DLayer> class.
+             *
+             * @param input The layer's input variables.
+             * @param device The device where the parameters of the layer shall be stored.
+             */
+            explicit AbstractPool2DLayer(CNTK::Variable input, const CNTK::DeviceDescriptor & device, const CNTK::PoolingType poolingType) :
+            AbstractSingleInputLayer(input, device),
+            _poolSize{2, 2},
+            _pad("auto"),
+            _stride{2, 2},
+            poolingType(poolingType)
+            {}
+
+        public:
+
+            // Define the getters and setters for the individual class members
+
+            MAKE_GETTER(poolSize, _poolSize)
+            MAKE_SETTER(poolSize, _poolSize)
+
+            MAKE_GETTER(pad, _pad)
+            MAKE_SETTER(pad, _pad)
+
+            MAKE_GETTER(stride, _stride)
+            MAKE_SETTER(stride, _stride)
+
+            /*!
+             * Converts the Chianti layer into a CNTK node.
+             *
+             * @return The CNTK node.
+             */
+            CNTK::FunctionPtr build() const
+            {
+                // Determine the correct amount of padding
+                CNTK::NDShape lowerPad = {0};
+                CNTK::NDShape upperPad = {0};
+                std::vector<bool> autoPadding = {true};
+
+                if (Values::isActive<0>(_pad))
+                {
+                    // The padding has been manually specified
+                    const auto & padding = Values::get<0>(_pad);
+
+                    autoPadding = {false, false, false};
+                    lowerPad = {padding[0], padding[1], 0};
+                    upperPad = {padding[0], padding[1], 0};
+                }
+                else if (Values::isActive<1>(_pad))
+                {
+                    // Padding is given as string
+                    const auto & padding = Values::get<1>(_pad);
+
+                    if (padding == "auto")
+                    {
+                        // Nothing to do here
+                    }
+                    else if (padding == "none")
+                    {
+                        // Use no padding
+                        autoPadding = {false, false, false};
+                        lowerPad = {0, 0, 0};
+                        upperPad = {0, 0, 0};
+                    }
+                    else
+                    {
+                        // Unrecognized option
+                        throw Exception::IllegalArgumentException("Invalid string value for pad.");
+                    }
+                }
+                else if (Values::isActive<2>(_pad) && !Values::get<2>(_pad))
+                {
+                    // The user indicated that no padding shall be performed
+                    autoPadding = {false, false, false};
+                    lowerPad = {0, 0, 0};
+                    upperPad = {0, 0, 0};
+                }
+
+                // The padding has been manually specified
+
+
+                CNTK::FunctionPtr network = CNTK::Pooling(
+                        this->input,
+                        this->poolingType,
+                        {_poolSize[0], _poolSize[1]},
+                        {_stride[0], _stride[1]},
+                        autoPadding,
+                        lowerPad,
+                        upperPad);
+
+                return network;
+            }
+        };
+
+        /**
+         * Max pooling layer.
+         */
+        class MaxPool2DLayer : public AbstractPool2DLayer
+        {
+        public:
+            /*!
+             * Initializes a new instance of the <Conv2DLayer> class.
+             *
+             * @param input The layer's input variables.
+             * @param device The device where the parameters of the layer shall be stored.
+             */
+            explicit MaxPool2DLayer(CNTK::Variable input, const CNTK::DeviceDescriptor & device) : AbstractPool2DLayer(input, device, CNTK::PoolingType::Max) {}
+        };
+
+        /**
+         * Average pooling layer.
+         */
+        class AveragePool2DLayer : public AbstractPool2DLayer
+        {
+        public:
+            /*!
+             * Initializes a new instance of the <Conv2DLayer> class.
+             *
+             * @param input The layer's input variables.
+             * @param device The device where the parameters of the layer shall be stored.
+             */
+            explicit AveragePool2DLayer(CNTK::Variable input, const CNTK::DeviceDescriptor & device) : AbstractPool2DLayer(input, device, CNTK::PoolingType::Average) {}
         };
     }
 }

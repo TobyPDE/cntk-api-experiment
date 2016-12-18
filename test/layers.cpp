@@ -626,3 +626,311 @@ TEST(Conv2DLayer, W_eigen_bias_relu)
     ASSERT_FLOAT_EQ(9.0f, output(0, 0, 0, 0, 0));
     ASSERT_FLOAT_EQ(0.0f, output(0, 0, 1, 0, 0));
 }
+
+TEST(Conv2DLayer, W_eigen_no_bias)
+{
+    // Arrange
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
+    auto X = CNTK::InputVariable({ 3, 3, 1 }, CNTK::DataType::Float);
+    CNTK::FunctionPtr network;
+
+    // Create a filter in Eigen
+    Eigen::Tensor<float, 4> W(3, 3, 1, 2);
+    W(0, 0, 0, 0) = 1.0f;
+    W(0, 1, 0, 0) = 1.0f / 2.0f;
+    W(0, 2, 0, 0) = 1.0f / 3.0f;
+    W(1, 0, 0, 0) = 1.0f / 4.0f;
+    W(1, 1, 0, 0) = 1.0f / 5.0f;
+    W(1, 2, 0, 0) = 1.0f / 6.0f;
+    W(2, 0, 0, 0) = 1.0f / 7.0f;
+    W(2, 1, 0, 0) = 1.0f / 8.0f;
+    W(2, 2, 0, 0) = 1.0f / 9.0f;
+
+    W(0, 0, 0, 1) = 2.0f;
+    W(0, 1, 0, 1) = 2.0f / 2.0f;
+    W(0, 2, 0, 1) = 2.0f / 3.0f;
+    W(1, 0, 0, 1) = 2.0f / 4.0f;
+    W(1, 1, 0, 1) = 2.0f / 5.0f;
+    W(1, 2, 0, 1) = 2.0f / 6.0f;
+    W(2, 0, 0, 1) = 2.0f / 7.0f;
+    W(2, 1, 0, 1) = 2.0f / 8.0f;
+    W(2, 2, 0, 1) = 2.0f / 9.0f;
+
+    // Act
+    network = Chianti::Layers::Conv2DLayer(X, device)
+            .filterSize({3, 3})
+            .pad("valid")
+            .stride({1, 1})
+            .numFilters(2)
+            .W(W)
+            .b(false)
+            .nonLinearity(Chianti::Nonlinearities::rectify);
+
+    auto outputVar = network->Output();
+
+    auto inputShape = X.Shape().AppendShape({1, 1});
+    auto outputShape = outputVar.Shape().AppendShape({1, 1});
+
+    Eigen::Tensor<float, 5> input(Chianti::Util::convertShape<5>(inputShape));
+    Eigen::Tensor<float, 5> output(Chianti::Util::convertShape<5>(outputShape));
+
+    input(0, 0, 0, 0, 0) = 1.0f;
+    input(0, 1, 0, 0, 0) = 2.0f;
+    input(0, 2, 0, 0, 0) = 3.0f;
+    input(1, 0, 0, 0, 0) = 4.0f;
+    input(1, 1, 0, 0, 0) = 5.0f;
+    input(1, 2, 0, 0, 0) = 6.0f;
+    input(2, 0, 0, 0, 0) = 7.0f;
+    input(2, 1, 0, 0, 0) = 8.0f;
+    input(2, 2, 0, 0, 0) = 9.0f;
+
+    auto inputValue = Chianti::Util::tensorToValue(input);
+    auto outputValue = Chianti::Util::tensorToValue(output);
+
+    std::unordered_map<CNTK::Variable, CNTK::ValuePtr> outputs = {{outputVar, outputValue}};
+
+    network->Forward({{X, inputValue}}, outputs, device);
+
+    // Assert
+    ASSERT_EQ(1, outputShape[0]);
+    ASSERT_EQ(1, outputShape[1]);
+    ASSERT_EQ(2, outputShape[2]);
+    ASSERT_EQ(1, outputShape[3]);
+    ASSERT_EQ(1, outputShape[4]);
+    ASSERT_FLOAT_EQ(9.0f, output(0, 0, 0, 0, 0));
+    ASSERT_FLOAT_EQ(18.0f, output(0, 0, 1, 0, 0));
+}
+
+TEST(MaxPool2DLayer, pad_0)
+{
+    // Arrange
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
+    auto X = CNTK::InputVariable({ 8, 8, 1 }, CNTK::DataType::Float);
+    CNTK::FunctionPtr network;
+
+    // Act
+    network = Chianti::Layers::MaxPool2DLayer(X, device)
+            .poolSize({2, 2})
+            .pad({0, 0})
+            .stride({2, 2});
+    auto outputVar = network->Output();
+    auto outputShape = outputVar.Shape();
+
+    // Assert
+    ASSERT_EQ(4, outputShape[0]);
+    ASSERT_EQ(4, outputShape[1]);
+}
+
+TEST(MaxPool2DLayer, pad_0_size_3)
+{
+    // Arrange
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
+    auto X = CNTK::InputVariable({ 8, 8, 1 }, CNTK::DataType::Float);
+    CNTK::FunctionPtr network;
+
+    // Act
+    network = Chianti::Layers::MaxPool2DLayer(X, device)
+            .poolSize({3, 3})
+            .pad({0, 0})
+            .stride({2, 2});
+    auto outputVar = network->Output();
+    auto outputShape = outputVar.Shape();
+
+    // Assert
+    ASSERT_EQ(3, outputShape[0]);
+    ASSERT_EQ(3, outputShape[1]);
+}
+
+TEST(MaxPool2DLayer, pad_false_size_3)
+{
+    // Arrange
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
+    auto X = CNTK::InputVariable({ 8, 8, 1 }, CNTK::DataType::Float);
+    CNTK::FunctionPtr network;
+
+    // Act
+    network = Chianti::Layers::MaxPool2DLayer(X, device)
+            .poolSize({3, 3})
+            .pad(false)
+            .stride({2, 2});
+    auto outputVar = network->Output();
+    auto outputShape = outputVar.Shape();
+
+    // Assert
+    ASSERT_EQ(3, outputShape[0]);
+    ASSERT_EQ(3, outputShape[1]);
+}
+
+TEST(MaxPool2DLayer, pad_true_size_3)
+{
+    // Arrange
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
+    auto X = CNTK::InputVariable({ 8, 8, 1 }, CNTK::DataType::Float);
+    CNTK::FunctionPtr network;
+
+    // Act
+    network = Chianti::Layers::MaxPool2DLayer(X, device)
+            .poolSize({3, 3})
+            .pad(true)
+            .stride({2, 2});
+    auto outputVar = network->Output();
+    auto outputShape = outputVar.Shape();
+
+    // Assert
+    ASSERT_EQ(4, outputShape[0]);
+    ASSERT_EQ(4, outputShape[1]);
+}
+
+TEST(MaxPool2DLayer, pad_auto_size_3)
+{
+    // Arrange
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
+    auto X = CNTK::InputVariable({ 8, 8, 1 }, CNTK::DataType::Float);
+    CNTK::FunctionPtr network;
+
+    // Act
+    network = Chianti::Layers::MaxPool2DLayer(X, device)
+            .poolSize({3, 3})
+            .pad("auto")
+            .stride({2, 2});
+    auto outputVar = network->Output();
+    auto outputShape = outputVar.Shape();
+
+    // Assert
+    ASSERT_EQ(4, outputShape[0]);
+    ASSERT_EQ(4, outputShape[1]);
+}
+
+TEST(MaxPool2DLayer, pad_none_size_3)
+{
+    // Arrange
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
+    auto X = CNTK::InputVariable({ 8, 8, 1 }, CNTK::DataType::Float);
+    CNTK::FunctionPtr network;
+
+    // Act
+    network = Chianti::Layers::MaxPool2DLayer(X, device)
+            .poolSize({3, 3})
+            .pad("none")
+            .stride({2, 2});
+    auto outputVar = network->Output();
+    auto outputShape = outputVar.Shape();
+
+    // Assert
+    ASSERT_EQ(3, outputShape[0]);
+    ASSERT_EQ(3, outputShape[1]);
+}
+
+TEST(MaxPool2DLayer, pool_size_8)
+{
+    // Arrange
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
+    auto X = CNTK::InputVariable({ 8, 8, 1 }, CNTK::DataType::Float);
+    CNTK::FunctionPtr network;
+
+    // Act
+    network = Chianti::Layers::MaxPool2DLayer(X, device)
+            .poolSize({8, 8})
+            .pad("none")
+            .stride({2, 2});
+    auto outputVar = network->Output();
+    auto outputShape = outputVar.Shape();
+
+    // Assert
+    ASSERT_EQ(1, outputShape[0]);
+    ASSERT_EQ(1, outputShape[1]);
+}
+
+TEST(MaxPool2DLayer, value)
+{
+    // Arrange
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
+    auto X = CNTK::InputVariable({ 4, 4, 1 }, CNTK::DataType::Float);
+    CNTK::FunctionPtr network;
+
+    // Act
+    network = Chianti::Layers::MaxPool2DLayer(X, device)
+            .poolSize({2, 2})
+            .stride({2, 2});
+
+    auto outputVar = network->Output();
+
+    auto inputShape = X.Shape().AppendShape({1, 1});
+    auto outputShape = outputVar.Shape().AppendShape({1, 1});
+
+    Eigen::Tensor<float, 5> input(Chianti::Util::convertShape<5>(inputShape));
+    Eigen::Tensor<float, 5> output(Chianti::Util::convertShape<5>(outputShape));
+
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            input(i, j, 0, 0, 0) = 4 * i + j;
+        }
+    }
+
+    auto inputValue = Chianti::Util::tensorToValue(input);
+    auto outputValue = Chianti::Util::tensorToValue(output);
+
+    std::unordered_map<CNTK::Variable, CNTK::ValuePtr> outputs = {{outputVar, outputValue}};
+
+    network->Forward({{X, inputValue}}, outputs, device);
+
+    // Assert
+    ASSERT_EQ(2, outputShape[0]);
+    ASSERT_EQ(2, outputShape[1]);
+    ASSERT_EQ(1, outputShape[2]);
+    ASSERT_EQ(1, outputShape[3]);
+    ASSERT_EQ(1, outputShape[4]);
+    ASSERT_FLOAT_EQ(5.0f, output(0, 0, 0, 0, 0));
+    ASSERT_FLOAT_EQ(7.0f, output(0, 1, 0, 0, 0));
+    ASSERT_FLOAT_EQ(13.0f, output(1, 0, 0, 0, 0));
+    ASSERT_FLOAT_EQ(15.0f, output(1, 1, 0, 0, 0));
+}
+
+TEST(AveragePool2DLayer, value)
+{
+    // Arrange
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
+    auto X = CNTK::InputVariable({ 4, 4, 1 }, CNTK::DataType::Float);
+    CNTK::FunctionPtr network;
+
+    // Act
+    network = Chianti::Layers::AveragePool2DLayer(X, device)
+            .poolSize({2, 2})
+            .stride({2, 2});
+
+    auto outputVar = network->Output();
+
+    auto inputShape = X.Shape().AppendShape({1, 1});
+    auto outputShape = outputVar.Shape().AppendShape({1, 1});
+
+    Eigen::Tensor<float, 5> input(Chianti::Util::convertShape<5>(inputShape));
+    Eigen::Tensor<float, 5> output(Chianti::Util::convertShape<5>(outputShape));
+
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            input(i, j, 0, 0, 0) = 4 * i + j;
+        }
+    }
+
+    auto inputValue = Chianti::Util::tensorToValue(input);
+    auto outputValue = Chianti::Util::tensorToValue(output);
+
+    std::unordered_map<CNTK::Variable, CNTK::ValuePtr> outputs = {{outputVar, outputValue}};
+
+    network->Forward({{X, inputValue}}, outputs, device);
+
+    // Assert
+    ASSERT_EQ(2, outputShape[0]);
+    ASSERT_EQ(2, outputShape[1]);
+    ASSERT_EQ(1, outputShape[2]);
+    ASSERT_EQ(1, outputShape[3]);
+    ASSERT_EQ(1, outputShape[4]);
+    ASSERT_FLOAT_EQ(10.0f / 4.0f, output(0, 0, 0, 0, 0));
+    ASSERT_FLOAT_EQ(18.0f / 4.0f, output(0, 1, 0, 0, 0));
+    ASSERT_FLOAT_EQ(42.0f / 4.0f, output(1, 0, 0, 0, 0));
+    ASSERT_FLOAT_EQ(50.0f / 4.0f, output(1, 1, 0, 0, 0));
+}
