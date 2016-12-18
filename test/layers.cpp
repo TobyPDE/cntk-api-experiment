@@ -934,3 +934,160 @@ TEST(AveragePool2DLayer, value)
     ASSERT_FLOAT_EQ(42.0f / 4.0f, output(1, 0, 0, 0, 0));
     ASSERT_FLOAT_EQ(50.0f / 4.0f, output(1, 1, 0, 0, 0));
 }
+
+TEST(Upscale2DLayer, scaleFactor_2_2)
+{
+    // Arrange
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
+    auto X = CNTK::InputVariable({ 4, 4, 2 }, CNTK::DataType::Float);
+    CNTK::FunctionPtr network;
+
+    // Act
+    network = Chianti::Layers::Upscale2DLayer(X, device)
+            .scaleFactor({2, 2});
+
+    auto outputVar = network->Output();
+
+    auto inputShape = X.Shape().AppendShape({1, 1});
+    auto outputShape = outputVar.Shape().AppendShape({1, 1});
+
+    Eigen::Tensor<float, 5> input(Chianti::Util::convertShape<5>(inputShape));
+    Eigen::Tensor<float, 5> output(Chianti::Util::convertShape<5>(outputShape));
+
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            for (int k = 0; k < 2; k++)
+            {
+                input(i, j, k, 0, 0) = (4 * i + j) * (k + 1);
+            }
+        }
+    }
+
+    auto inputValue = Chianti::Util::tensorToValue(input);
+    auto outputValue = Chianti::Util::tensorToValue(output);
+
+    std::unordered_map<CNTK::Variable, CNTK::ValuePtr> outputs = {{outputVar, outputValue}};
+
+    network->Forward({{X, inputValue}}, outputs, device);
+
+    // Assert
+    ASSERT_EQ(8, outputShape[0]);
+    ASSERT_EQ(8, outputShape[1]);
+    ASSERT_EQ(2, outputShape[2]);
+    ASSERT_EQ(1, outputShape[3]);
+    ASSERT_EQ(1, outputShape[4]);
+
+    for (int i = 0; i < 8; i++)
+    {
+        for (int j = 0; j < 8; j++)
+        {
+            for (int k = 0; k < 2; k++)
+            {
+                ASSERT_FLOAT_EQ(input(i / 2, j / 2, k, 0, 0), output(i, j, k, 0, 0));
+            }
+        }
+    }
+}
+
+TEST(Upscale2DLayer, scaleFactor_1_2)
+{
+    // Arrange
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
+    auto X = CNTK::InputVariable({ 4, 4, 2 }, CNTK::DataType::Float);
+    CNTK::FunctionPtr network;
+
+    // Act
+    network = Chianti::Layers::Upscale2DLayer(X, device)
+            .scaleFactor({1, 2});
+
+    auto outputVar = network->Output();
+
+    auto inputShape = X.Shape().AppendShape({1, 1});
+    auto outputShape = outputVar.Shape().AppendShape({1, 1});
+
+    Eigen::Tensor<float, 5> input(Chianti::Util::convertShape<5>(inputShape));
+    Eigen::Tensor<float, 5> output(Chianti::Util::convertShape<5>(outputShape));
+
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            for (int k = 0; k < 2; k++)
+            {
+                input(i, j, k, 0, 0) = (4 * i + j) * (k + 1);
+            }
+        }
+    }
+
+    auto inputValue = Chianti::Util::tensorToValue(input);
+    auto outputValue = Chianti::Util::tensorToValue(output);
+
+    std::unordered_map<CNTK::Variable, CNTK::ValuePtr> outputs = {{outputVar, outputValue}};
+
+    network->Forward({{X, inputValue}}, outputs, device);
+
+    // Assert
+    ASSERT_EQ(4, outputShape[0]);
+    ASSERT_EQ(8, outputShape[1]);
+    ASSERT_EQ(2, outputShape[2]);
+    ASSERT_EQ(1, outputShape[3]);
+    ASSERT_EQ(1, outputShape[4]);
+
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 8; j++)
+        {
+            for (int k = 0; k < 2; k++)
+            {
+                ASSERT_FLOAT_EQ(input(i, j / 2, k, 0, 0), output(i, j, k, 0, 0));
+            }
+        }
+    }
+}
+
+
+TEST(Upscale2DLayer, scaleFactor_8_8)
+{
+    // Arrange
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
+    auto X = CNTK::InputVariable({ 1, 1, 1 }, CNTK::DataType::Float);
+    CNTK::FunctionPtr network;
+
+    // Act
+    network = Chianti::Layers::Upscale2DLayer(X, device)
+            .scaleFactor({8, 8});
+
+    auto outputVar = network->Output();
+
+    auto inputShape = X.Shape().AppendShape({1, 1});
+    auto outputShape = outputVar.Shape().AppendShape({1, 1});
+
+    Eigen::Tensor<float, 5> input(Chianti::Util::convertShape<5>(inputShape));
+    Eigen::Tensor<float, 5> output(Chianti::Util::convertShape<5>(outputShape));
+
+    input.setConstant(2.0f);
+
+    auto inputValue = Chianti::Util::tensorToValue(input);
+    auto outputValue = Chianti::Util::tensorToValue(output);
+
+    std::unordered_map<CNTK::Variable, CNTK::ValuePtr> outputs = {{outputVar, outputValue}};
+
+    network->Forward({{X, inputValue}}, outputs, device);
+
+    // Assert
+    ASSERT_EQ(8, outputShape[0]);
+    ASSERT_EQ(8, outputShape[1]);
+    ASSERT_EQ(1, outputShape[2]);
+    ASSERT_EQ(1, outputShape[3]);
+    ASSERT_EQ(1, outputShape[4]);
+
+    for (int i = 0; i < 8; i++)
+    {
+        for (int j = 0; j < 8; j++)
+        {
+            ASSERT_FLOAT_EQ(2.0f, output(i, j, 0, 0, 0));
+        }
+    }
+}

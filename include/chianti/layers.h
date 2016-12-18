@@ -345,7 +345,7 @@ namespace Chianti
          */
         class AbstractPool2DLayer : public AbstractSingleInputLayer
         {
-        public:
+        protected:
             typedef AbstractPool2DLayer Self;
 
             /*!
@@ -446,9 +446,6 @@ namespace Chianti
                     upperPad = {0, 0, 0};
                 }
 
-                // The padding has been manually specified
-
-
                 CNTK::FunctionPtr network = CNTK::Pooling(
                         this->input,
                         this->poolingType,
@@ -490,6 +487,85 @@ namespace Chianti
              * @param device The device where the parameters of the layer shall be stored.
              */
             explicit AveragePool2DLayer(CNTK::Variable input, const CNTK::DeviceDescriptor & device) : AbstractPool2DLayer(input, device, CNTK::PoolingType::Average) {}
+        };
+
+        /**
+         * This layer upscales the input tensor by repeating its values along the spatial dimensions.
+         */
+        class Upscale2DLayer : public AbstractSingleInputLayer {
+        private:
+            typedef Upscale2DLayer Self;
+
+            /*!
+             * The upscale factor
+             */
+            Values::ArrayValue<uint64_t, 2> _scaleFactor;
+
+        public:
+            /*!
+             * Initializes a new instance of the <Conv2DLayer> class.
+             *
+             * @param input The layer's input variables.
+             * @param device The device where the parameters of the layer shall be stored.
+             */
+            explicit Upscale2DLayer(CNTK::Variable input, const CNTK::DeviceDescriptor & device) :
+            AbstractSingleInputLayer(input, device),
+            _scaleFactor{2, 2}
+            {}
+
+            // Define the getters and setters for the individual class members
+
+            MAKE_GETTER(scaleFactor, _scaleFactor)
+            MAKE_SETTER(scaleFactor, _scaleFactor)
+
+            /*!
+             * Converts the Chianti layer into a CNTK node.
+             *
+             * @return The CNTK node.
+             */
+            CNTK::FunctionPtr build() const
+            {
+                // We implement the unpooling as the backwards pass of the convolution.
+                // TODO: This can be implemented more efficiently. For example: https://github.com/Microsoft/CNTK/issues/711
+
+                // Create the filter kernel for the unpooling operation
+                size_t numInputChannels = this->input.Shape()[this->input.Shape().Rank() - 1];
+
+                CNTK::NDShape filterShape = { this->_scaleFactor[0], this->_scaleFactor[1], numInputChannels, numInputChannels };
+
+                Eigen::Tensor<float, 4> W(static_cast<int>(_scaleFactor[0]), static_cast<int>(_scaleFactor[1]), static_cast<int>(numInputChannels), static_cast<int>(numInputChannels));
+                W.setConstant(0.0f);
+
+                for (int i = 0; i < static_cast<int>(_scaleFactor[0]); i++)
+                {
+                    for (int j = 0; j < static_cast<int>(_scaleFactor[1]); j++)
+                    {
+                        for (int c = 0; c < static_cast<int>(numInputChannels); c++)
+                        {
+                            // A value of 1.0f means that each value is simply repeated
+                            W(i, j, c, c) = 1.0f;
+                        }
+                    }
+                }
+
+                // Convert the Eigen tensor to a CNTK parameter
+                auto view = Util::tensorToView<4, float>(W);
+                auto params = CNTK::MakeSharedObject<CNTK::NDArrayView>(CNTK::DataType::Float, filterShape, device);
+                params->CopyFrom(*view);
+
+                // Create the convolution/deconvolution
+                CNTK::FunctionPtr network = Convolution(
+                        CNTK::Constant(params),
+                        this->input,
+                        { _scaleFactor[0], _scaleFactor[1], numInputChannels },
+                        { true },
+                        { false, false, false },
+                        { 0, 0, 0 },
+                        { 0, 0, 0 },
+                        true);
+
+                return network;
+            }
         };
     }
 }
