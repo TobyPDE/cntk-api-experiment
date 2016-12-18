@@ -1091,3 +1091,33 @@ TEST(Upscale2DLayer, scaleFactor_8_8)
     }
 }
 
+TEST(BatchNormLayer, test)
+{
+    // Arrange
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
+    auto X = CNTK::InputVariable({ 2, 2, 1 }, CNTK::DataType::Float);
+    CNTK::FunctionPtr network;
+
+    // Act
+    network = Chianti::Layers::BatchNormLayer(X, device).useCuDNN(true);
+
+    auto outputVar = network->Output();
+
+    auto inputShape = X.Shape().AppendShape({1, 10});
+    auto outputShape = outputVar.Shape().AppendShape({1, 10});
+
+    Eigen::Tensor<float, 5> input(Chianti::Util::convertShape<5>(inputShape));
+    Eigen::Tensor<float, 5> output(Chianti::Util::convertShape<5>(outputShape));
+
+    input.setConstant(2.0f);
+
+    auto inputValue = Chianti::Util::tensorToValue(input);
+    auto outputValue = Chianti::Util::tensorToValue(output);
+
+    std::unordered_map<CNTK::Variable, CNTK::ValuePtr> outputs = {{outputVar, outputValue}};
+
+    network->Forward({{X, inputValue}}, outputs, device);
+
+    std::cout << input << "\n" << output << "\n";
+}
+

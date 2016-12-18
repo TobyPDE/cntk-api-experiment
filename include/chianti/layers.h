@@ -646,5 +646,108 @@ namespace Chianti
             }
         };
 
+        /**
+         * Batch normalization layer.
+         * TODO: Make it possible to pass eigen tensors for the parameters of the layer.
+
+
+    CNTK_API FunctionPtr BatchNormalization(const Variable& operand,
+                                            const Variable& scale,
+                                            const Variable& bias,
+                                            const Variable& runningMean,
+                                            const Variable& runningInvStd,
+                                            bool spatial,
+                                            double normalizationTimeConstant = 0,
+                                            double blendTimeConstant = 0,
+                                            double epsilon = 0.00001,
+                                            bool useCuDNNEngine = false,
+                                            const std::wstring& name = L"");
+
+         */
+        class BatchNormLayer : public AbstractNonDeterministicLayer {
+        private:
+            typedef BatchNormLayer Self;
+            /**
+             * Whether or not to use cuDNN
+             */
+            bool _useCuDNN;
+            /**
+             * Determines the smoothing of the running mean and the running std.
+             */
+            double _normalizationTimeConstant;
+            /**
+             * Regularization parameter.
+             */
+            double _epsilon;
+
+        public:
+            /*!
+             * Initializes a new instance of the <AbstractNonDeterministicLayer> class.
+             *
+             * @param input The layer's input variables.
+             * @param device The device where the parameters of the layer shall be stored.
+             */
+            explicit BatchNormLayer(CNTK::Variable input, const CNTK::DeviceDescriptor & device) :
+            AbstractNonDeterministicLayer(input, device),
+            _useCuDNN(false),
+            // 5000.0 as recommended here: https://github.com/Microsoft/CNTK/wiki/BatchNormalization
+            _normalizationTimeConstant(5000.0),
+            _epsilon(1e-5)
+            {}
+
+            // Define the getters and setters for the individual class members
+
+            MAKE_GETTER(useCuDNN, _useCuDNN)
+            MAKE_SETTER(useCuDNN, _useCuDNN)
+
+            MAKE_GETTER(normalizationTimeConstant, _normalizationTimeConstant)
+            MAKE_SETTER(normalizationTimeConstant, _normalizationTimeConstant)
+
+            MAKE_GETTER(epsilon, _epsilon)
+            MAKE_SETTER(epsilon, _epsilon)
+
+            /*!
+             * Converts the Chianti layer into a CNTK node.
+             *
+             * @return The CNTK node.
+             */
+            CNTK::FunctionPtr build() const
+            {
+                CNTK::FunctionPtr network = this->input;
+
+                CNTK::NDShape parameterShape;
+                // Determine the size of the parameters
+                // If the input tensor has more than one dimension, then this is considered to be a spatial batch-norm
+                if (input.Shape().Rank() > 1)
+                {
+                    // The last dimension determines the number of channels
+                    parameterShape = { input.Shape()[input.Shape().Rank() - 1] };
+                }
+                else
+                {
+                    parameterShape = { input.Shape()[0] };
+                }
+
+                // Create the parameters
+                auto scale = CNTK::Parameter(parameterShape, 1.0f, device);
+                auto bias = CNTK::Parameter(parameterShape, 0.0f, device);
+                auto runningMean = CNTK::Parameter(parameterShape, 0.0f, device);
+                auto runningInvStd = CNTK::Parameter(parameterShape, 1.0f, device);
+
+                network = CNTK::BatchNormalization(
+                        network,
+                        scale,
+                        bias,
+                        runningMean,
+                        runningInvStd,
+                        input.Shape().Rank() > 1,
+                        _normalizationTimeConstant,
+                        0,
+                        _epsilon,
+                        _useCuDNN);
+
+                return network;
+            }
+        };
     }
 }
