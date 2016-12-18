@@ -490,12 +490,12 @@ namespace Chianti
         };
 
         /**
-         * This layer upscales the input tensor by repeating its values along the spatial dimensions.
+         * This layer upscales a tensor with two spatial dimensions. By default, it upscales by repeating the values
+         * along the spatial axes. However, it also support bilinear interpolation, which is more expensive.
          */
         class Upscale2DLayer : public AbstractSingleInputLayer {
         private:
             typedef Upscale2DLayer Self;
-
             /*!
              * The upscale factor
              */
@@ -567,5 +567,84 @@ namespace Chianti
                 return network;
             }
         };
+
+        /**
+         * This is the base class for non-deterministic layers such as noise layers (DropOut) or normalization layers
+         * (BatchNorm).
+         */
+        class AbstractNonDeterministicLayer : public AbstractSingleInputLayer {
+        protected:
+            typedef AbstractNonDeterministicLayer Self;
+            /*!
+             * Whether or not the output should be deterministic
+             */
+            bool _deterministic;
+
+        public:
+            /*!
+             * Initializes a new instance of the <AbstractNonDeterministicLayer> class.
+             *
+             * @param input The layer's input variables.
+             * @param device The device where the parameters of the layer shall be stored.
+             */
+            explicit AbstractNonDeterministicLayer(CNTK::Variable input, const CNTK::DeviceDescriptor & device) :
+                    AbstractSingleInputLayer(input, device),
+                    _deterministic(false)
+                    {}
+
+            // Define the getters and setters for the individual class members
+
+            MAKE_GETTER(deterministic, _deterministic)
+            MAKE_SETTER(deterministic, _deterministic)
+        };
+
+        /**
+         * This layer implements DropOut.
+         */
+        class DropOutLayer : public AbstractNonDeterministicLayer {
+        private:
+            typedef DropOutLayer Self;
+            /*!
+             * The dropout rate
+             */
+            double _p;
+
+        public:
+            /*!
+             * Initializes a new instance of the <AbstractNonDeterministicLayer> class.
+             *
+             * @param input The layer's input variables.
+             * @param device The device where the parameters of the layer shall be stored.
+             */
+            explicit DropOutLayer(CNTK::Variable input, const CNTK::DeviceDescriptor & device) :
+                    AbstractNonDeterministicLayer(input, device),
+                    _p(0.25)
+                    {}
+
+            // Define the getters and setters for the individual class members
+
+            MAKE_GETTER(p, _p)
+            MAKE_SETTER(p, _p)
+
+            /*!
+             * Converts the Chianti layer into a CNTK node.
+             *
+             * @return The CNTK node.
+             */
+            CNTK::FunctionPtr build() const
+            {
+                CNTK::FunctionPtr network = this->input;
+
+                // If the layer is deterministic or there is no drop-out specified, simply return the input
+                if (!_deterministic && _p > 0.0)
+                {
+                    // Apply the drop-out
+                    network = CNTK::Dropout(network, _p);
+                }
+
+                return network;
+            }
+        };
+
     }
 }

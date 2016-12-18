@@ -1047,7 +1047,6 @@ TEST(Upscale2DLayer, scaleFactor_1_2)
     }
 }
 
-
 TEST(Upscale2DLayer, scaleFactor_8_8)
 {
     // Arrange
@@ -1091,3 +1090,4 @@ TEST(Upscale2DLayer, scaleFactor_8_8)
         }
     }
 }
+
