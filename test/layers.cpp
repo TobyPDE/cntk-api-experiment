@@ -13,7 +13,7 @@ TEST(Conv2DLayer, pad_shape_same)
     network = Chianti::Layers::Conv2DLayer(X, device)
             .filterSize({3, 3})
             .pad("same")
-            .stride(1)
+            .stride({1, 1})
             .numFilters(1);
     auto outputVar = network->Output();
     auto outputShape = outputVar.Shape();
@@ -34,7 +34,7 @@ TEST(Conv2DLayer, pad_shape_full)
     network = Chianti::Layers::Conv2DLayer(X, device)
             .filterSize({3, 3})
             .pad("full")
-            .stride(1)
+            .stride({1, 1})
             .numFilters(1);
     auto outputVar = network->Output();
     auto outputShape = outputVar.Shape();
@@ -55,7 +55,7 @@ TEST(Conv2DLayer, pad_shape_valid)
     network = Chianti::Layers::Conv2DLayer(X, device)
             .filterSize({3, 3})
             .pad("valid")
-            .stride(1)
+            .stride({1, 1})
             .numFilters(1);
     auto outputVar = network->Output();
     auto outputShape = outputVar.Shape();
@@ -76,7 +76,7 @@ TEST(Conv2DLayer, pad_shape_0)
     network = Chianti::Layers::Conv2DLayer(X, device)
             .filterSize({3, 3})
             .pad({0, 0})
-            .stride(1)
+            .stride({1, 1})
             .numFilters(1);
     auto outputVar = network->Output();
     auto outputShape = outputVar.Shape();
@@ -97,7 +97,7 @@ TEST(Conv2DLayer, pad_shape_1)
     network = Chianti::Layers::Conv2DLayer(X, device)
             .filterSize({3, 3})
             .pad({1, 1})
-            .stride(1)
+            .stride({1, 1})
             .numFilters(1);
     auto outputVar = network->Output();
     auto outputShape = outputVar.Shape();
@@ -118,7 +118,7 @@ TEST(Conv2DLayer, pad_shape_2)
     network = Chianti::Layers::Conv2DLayer(X, device)
             .filterSize({3, 3})
             .pad({2, 2})
-            .stride(1)
+            .stride({1, 1})
             .numFilters(1);
     auto outputVar = network->Output();
     auto outputShape = outputVar.Shape();
@@ -139,7 +139,7 @@ TEST(Conv2DLayer, pad_shape_3)
     network = Chianti::Layers::Conv2DLayer(X, device)
             .filterSize({3, 3})
             .pad({3, 3})
-            .stride(1)
+            .stride({1, 1})
             .numFilters(1);
     auto outputVar = network->Output();
     auto outputShape = outputVar.Shape();
@@ -160,7 +160,7 @@ TEST(Conv2DLayer, stride_shape_1)
     network = Chianti::Layers::Conv2DLayer(X, device)
             .filterSize({3, 3})
             .pad("same")
-            .stride(1)
+            .stride({1, 1})
             .numFilters(1);
     auto outputVar = network->Output();
     auto outputShape = outputVar.Shape();
@@ -181,7 +181,7 @@ TEST(Conv2DLayer, stride_shape_2)
     network = Chianti::Layers::Conv2DLayer(X, device)
             .filterSize({3, 3})
             .pad({1, 1})
-            .stride(2)
+            .stride({2, 2})
             .numFilters(1);
     auto outputVar = network->Output();
     auto outputShape = outputVar.Shape();
@@ -244,7 +244,7 @@ TEST(Conv2DLayer, stride_pool)
     network = Chianti::Layers::Conv2DLayer(X, device)
             .filterSize({2, 2})
             .pad({0, 0})
-            .stride(2)
+            .stride({2, 2})
             .numFilters(1);
     auto outputVar = network->Output();
     auto outputShape = outputVar.Shape();
@@ -265,7 +265,7 @@ TEST(Conv2DLayer, W_initializer)
     network = Chianti::Layers::Conv2DLayer(X, device)
             .filterSize({3, 3})
             .pad("valid")
-            .stride(1)
+            .stride({1, 1})
             .numFilters(1)
             .W(CNTK::ConstantInitializer(0));
 
@@ -306,7 +306,7 @@ TEST(Conv2DLayer, W_initializer_2)
     network = Chianti::Layers::Conv2DLayer(X, device)
             .filterSize({3, 3})
             .pad("valid")
-            .stride(1)
+            .stride({1, 1})
             .numFilters(1)
             .W(CNTK::ConstantInitializer(1));
 
@@ -359,7 +359,7 @@ TEST(Conv2DLayer, W_eigen)
     network = Chianti::Layers::Conv2DLayer(X, device)
             .filterSize({3, 3})
             .pad("valid")
-            .stride(1)
+            .stride({1, 1})
             .numFilters(1)
             .W(W);
 
@@ -430,7 +430,7 @@ TEST(Conv2DLayer, W_eigen_2)
     network = Chianti::Layers::Conv2DLayer(X, device)
             .filterSize({3, 3})
             .pad("valid")
-            .stride(1)
+            .stride({1, 1})
             .numFilters(2)
             .W(W);
 
@@ -508,7 +508,7 @@ TEST(Conv2DLayer, W_eigen_bias)
     network = Chianti::Layers::Conv2DLayer(X, device)
             .filterSize({3, 3})
             .pad("valid")
-            .stride(1)
+            .stride({1, 1})
             .numFilters(2)
             .W(W)
             .b(b);
@@ -547,6 +547,7 @@ TEST(Conv2DLayer, W_eigen_bias)
     ASSERT_FLOAT_EQ(9.0f, output(0, 0, 0, 0, 0));
     ASSERT_FLOAT_EQ(9.0f, output(0, 0, 1, 0, 0));
 }
+
 TEST(Conv2DLayer, W_eigen_bias_relu)
 {
     // Arrange
@@ -581,12 +582,11 @@ TEST(Conv2DLayer, W_eigen_bias_relu)
     b(0, 0, 0) = 0.0f;
     b(0, 0, 1) = -19.0f;
 
-
     // Act
     network = Chianti::Layers::Conv2DLayer(X, device)
             .filterSize({3, 3})
             .pad("valid")
-            .stride(1)
+            .stride({1, 1})
             .numFilters(2)
             .W(W)
             .b(b)

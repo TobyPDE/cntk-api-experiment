@@ -3,6 +3,7 @@
 #include "CNTKLibrary.h"
 #include "values.h"
 #include "nonlinearities.h"
+#include "exception.h"
 
 #include <unsupported/Eigen/CXX11/Tensor>
 #include <array>
@@ -58,7 +59,7 @@ namespace Chianti
             else
             {
                 // This should never happen
-                // TODO: Throw exception
+                Exception::terminate("Illegal composite value.", 0x1001);
             }
         }
 
@@ -85,7 +86,7 @@ namespace Chianti
             else
             {
                 // No parameter is defined
-                // TODO: Throw exception
+                Exception::terminate("Illegal composite value.", 0x1002);
             }
         }
 
@@ -280,7 +281,7 @@ namespace Chianti
                     }
                     else
                     {
-                        // TODO: Throw exception
+                        throw Exception::IllegalArgumentException("Illegal string value for parameter 'pad'.");
                     }
                 }
 
@@ -313,7 +314,8 @@ namespace Chianti
                         // If the user specified an Eigen tensor, then the first two dimensions must have size 1
                         if (Values::isActive<0>(this->_b))
                         {
-                            // TODO: Check size
+                            Exception::assertArgument(Values::get<0>(this->_b).dimensions()[0] == 1, "Bias must have shape (1, 1, numFilters).");
+                            Exception::assertArgument(Values::get<0>(this->_b).dimensions()[1] == 1, "Bias must have shape (1, 1, numFilters).");
                         }
 
                         // The user specified the bias

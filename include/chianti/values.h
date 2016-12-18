@@ -23,19 +23,6 @@ namespace Chianti
             ArrayValue() {}
 
             /*!
-             * Assigns the value v to all entries of the array.
-             *
-             * @param v The value of every entry of the array.
-             */
-            ArrayValue(T v)
-            {
-                for (size_t i = 0; i < S; i++)
-                {
-                    this->value[i] = v;
-                }
-            }
-
-            /*!
              * Uses the array v as value.
              *
              * @param v The new value of the array
@@ -202,13 +189,6 @@ namespace Chianti
              * @param v The value that shall be assigned to the node.
              */
             CompositeValue(const std::array<T, S> & v) : value(v), isActive(true) {}
-
-            /*!
-             * Creates a new instance of the CompositeValue class.
-             *
-             * @param v The value that shall be assigned to the node.
-             */
-            CompositeValue(T v) : value(v), isActive(true) {}
 
             /*!
              * Creates a new instance of the CompositeValue class.

@@ -15,19 +15,6 @@ TEST(values, compositeValue_initialize_list)
     ASSERT_EQ(2, Chianti::Values::get<0>(v)[1]);
 }
 
-TEST(values, compositeValue_initialize_constant)
-{
-    // Arrange
-    // Act
-    Chianti::Values::CompositeValue<::Chianti::Values::ArrayValue<uint64_t, 2>, std::string> v(5);
-
-    // Assert
-    ASSERT_TRUE(Chianti::Values::isActive<0>(v));
-    ASSERT_FALSE(Chianti::Values::isActive<1>(v));
-    ASSERT_EQ(5, Chianti::Values::get<0>(v)[0]);
-    ASSERT_EQ(5, Chianti::Values::get<0>(v)[1]);
-}
-
 TEST(values, compositeValue_initialize_array)
 {
     // Arrange
