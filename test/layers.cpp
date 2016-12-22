@@ -1093,6 +1093,7 @@ TEST(Upscale2DLayer, scaleFactor_8_8)
 
 TEST(BatchNormLayer, test)
 {
+/*
     // Arrange
     auto device = CNTK::DeviceDescriptor::GPUDevice(0);
     auto X = CNTK::InputVariable({ 2, 2, 1 }, CNTK::DataType::Float);
@@ -1119,5 +1120,313 @@ TEST(BatchNormLayer, test)
     network->Forward({{X, inputValue}}, outputs, device);
 
     std::cout << input << "\n" << output << "\n";
+*/
+}
+
+TEST(DenseLayer, weight_bias_nonlinearity)
+{
+    // Arrange
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
+    auto X = CNTK::InputVariable({ 3 }, CNTK::DataType::Float);
+    CNTK::FunctionPtr network = X;
+
+    // Create a weight matrix
+    Eigen::Tensor<float, 2> W(2, 3);
+    W(0, 0) = 0;
+    W(0, 1) = 1;
+    W(0, 2) = 2;
+    W(1, 0) = 3;
+    W(1, 1) = 4;
+    W(1, 2) = 5;
+
+    // Create a bias vector
+    Eigen::Tensor<float, 1> b(2);
+    b(0) = -100;
+    b(1) = 10;
+
+    // Create an input matrix
+    Eigen::Tensor<float, 3> input(3, 1, 5);
+    for (int j = 0; j < 3; j++)
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            input(j, 0, i) = j * 5 + i;
+        }
+    }
+
+    // Act
+    network = Chianti::Layers::DenseLayer(network, device)
+            .numUnits(2)
+            .W(W)
+            .b(b)
+            .nonLinearity(Chianti::Nonlinearities::rectify);
+
+    auto outputVar = network->Output();
+
+    auto inputShape = X.Shape().AppendShape({1, 5});
+    auto outputShape = outputVar.Shape().AppendShape({1, 5});
+
+    Eigen::Tensor<float, 3> output(Chianti::Util::convertShape<3>(outputShape));
+
+    auto inputValue = Chianti::Util::tensorToValue(input);
+    auto outputValue = Chianti::Util::tensorToValue(output);
+
+    std::unordered_map<CNTK::Variable, CNTK::ValuePtr> outputs = {{outputVar, outputValue}};
+
+    network->Forward({{X, inputValue}}, outputs, device);
+
+    ASSERT_FLOAT_EQ(0, output(0, 0, 0));
+    ASSERT_FLOAT_EQ(80, output(1, 0, 0));
+
+    ASSERT_FLOAT_EQ(0, output(0, 0, 1));
+    ASSERT_FLOAT_EQ(92, output(1, 0, 1));
+
+    ASSERT_FLOAT_EQ(0, output(0, 0, 2));
+    ASSERT_FLOAT_EQ(104, output(1, 0, 2));
+
+    ASSERT_FLOAT_EQ(0, output(0, 0, 3));
+    ASSERT_FLOAT_EQ(116, output(1, 0, 3));
+
+    ASSERT_FLOAT_EQ(0, output(0, 0, 4));
+    ASSERT_FLOAT_EQ(128, output(1, 0, 4));
+}
+
+TEST(DenseLayer, weight_bias_no_nonlinearity)
+{
+    // Arrange
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
+    auto X = CNTK::InputVariable({ 3 }, CNTK::DataType::Float);
+    CNTK::FunctionPtr network = X;
+
+    // Create a weight matrix
+    Eigen::Tensor<float, 2> W(2, 3);
+    W(0, 0) = 0;
+    W(0, 1) = 1;
+    W(0, 2) = 2;
+    W(1, 0) = 3;
+    W(1, 1) = 4;
+    W(1, 2) = 5;
+
+    // Create a bias vector
+    Eigen::Tensor<float, 1> b(2);
+    b(0) = -100;
+    b(1) = 10;
+
+    // Create an input matrix
+    Eigen::Tensor<float, 3> input(3, 1, 5);
+    for (int j = 0; j < 3; j++)
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            input(j, 0, i) = j * 5 + i;
+        }
+    }
+
+    // Act
+    network = Chianti::Layers::DenseLayer(network, device)
+            .numUnits(2)
+            .W(W)
+            .b(b)
+            .nonLinearity(Chianti::Nonlinearities::linear);
+
+    auto outputVar = network->Output();
+
+    auto inputShape = X.Shape().AppendShape({1, 5});
+    auto outputShape = outputVar.Shape().AppendShape({1, 5});
+
+    Eigen::Tensor<float, 3> output(Chianti::Util::convertShape<3>(outputShape));
+
+    auto inputValue = Chianti::Util::tensorToValue(input);
+    auto outputValue = Chianti::Util::tensorToValue(output);
+
+    std::unordered_map<CNTK::Variable, CNTK::ValuePtr> outputs = {{outputVar, outputValue}};
+
+    network->Forward({{X, inputValue}}, outputs, device);
+
+    ASSERT_FLOAT_EQ(-75, output(0, 0, 0));
+    ASSERT_FLOAT_EQ(80, output(1, 0, 0));
+
+    ASSERT_FLOAT_EQ(-72, output(0, 0, 1));
+    ASSERT_FLOAT_EQ(92, output(1, 0, 1));
+
+    ASSERT_FLOAT_EQ(-69, output(0, 0, 2));
+    ASSERT_FLOAT_EQ(104, output(1, 0, 2));
+
+    ASSERT_FLOAT_EQ(-66, output(0, 0, 3));
+    ASSERT_FLOAT_EQ(116, output(1, 0, 3));
+
+    ASSERT_FLOAT_EQ(-63, output(0, 0, 4));
+    ASSERT_FLOAT_EQ(128, output(1, 0, 4));
+}
+
+TEST(DenseLayer, weight_no_bias)
+{
+    // Arrange
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
+    auto X = CNTK::InputVariable({ 3 }, CNTK::DataType::Float);
+    CNTK::FunctionPtr network = X;
+
+    // Create a weight matrix
+    Eigen::Tensor<float, 2> W(2, 3);
+    W(0, 0) = 0;
+    W(0, 1) = 1;
+    W(0, 2) = 2;
+    W(1, 0) = 3;
+    W(1, 1) = 4;
+    W(1, 2) = 5;
+
+    // Create an input matrix
+    Eigen::Tensor<float, 3> input(3, 1, 5);
+    for (int j = 0; j < 3; j++)
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            input(j, 0, i) = j * 5 + i;
+        }
+    }
+
+    // Act
+    network = Chianti::Layers::DenseLayer(network, device)
+            .numUnits(2)
+            .W(W)
+            .b(false)
+            .nonLinearity(Chianti::Nonlinearities::linear);
+
+    auto outputVar = network->Output();
+
+    auto inputShape = X.Shape().AppendShape({1, 5});
+    auto outputShape = outputVar.Shape().AppendShape({1, 5});
+
+    Eigen::Tensor<float, 3> output(Chianti::Util::convertShape<3>(outputShape));
+
+    auto inputValue = Chianti::Util::tensorToValue(input);
+    auto outputValue = Chianti::Util::tensorToValue(output);
+
+    std::unordered_map<CNTK::Variable, CNTK::ValuePtr> outputs = {{outputVar, outputValue}};
+
+    network->Forward({{X, inputValue}}, outputs, device);
+
+    ASSERT_FLOAT_EQ(25, output(0, 0, 0));
+    ASSERT_FLOAT_EQ(70, output(1, 0, 0));
+
+    ASSERT_FLOAT_EQ(28, output(0, 0, 1));
+    ASSERT_FLOAT_EQ(82, output(1, 0, 1));
+
+    ASSERT_FLOAT_EQ(31, output(0, 0, 2));
+    ASSERT_FLOAT_EQ(94, output(1, 0, 2));
+
+    ASSERT_FLOAT_EQ(34, output(0, 0, 3));
+    ASSERT_FLOAT_EQ(106, output(1, 0, 3));
+
+    ASSERT_FLOAT_EQ(37, output(0, 0, 4));
+    ASSERT_FLOAT_EQ(118, output(1, 0, 4));
+}
+
+TEST(DenseLayer, weight_initializer)
+{
+    // Arrange
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
+    auto X = CNTK::InputVariable({ 3 }, CNTK::DataType::Float);
+    CNTK::FunctionPtr network = X;
+
+    // Create an input matrix
+    Eigen::Tensor<float, 3> input(3, 1, 5);
+    for (int j = 0; j < 3; j++)
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            input(j, 0, i) = j * 5 + i;
+        }
+    }
+
+    // Act
+    network = Chianti::Layers::DenseLayer(network, device)
+            .numUnits(2)
+            .W(CNTK::ConstantInitializer(1))
+            .b(false)
+            .nonLinearity(Chianti::Nonlinearities::linear);
+
+    auto outputVar = network->Output();
+
+    auto inputShape = X.Shape().AppendShape({1, 5});
+    auto outputShape = outputVar.Shape().AppendShape({1, 5});
+
+    Eigen::Tensor<float, 3> output(Chianti::Util::convertShape<3>(outputShape));
+
+    auto inputValue = Chianti::Util::tensorToValue(input);
+    auto outputValue = Chianti::Util::tensorToValue(output);
+
+    std::unordered_map<CNTK::Variable, CNTK::ValuePtr> outputs = {{outputVar, outputValue}};
+
+    network->Forward({{X, inputValue}}, outputs, device);
+
+    ASSERT_FLOAT_EQ(15, output(0, 0, 0));
+    ASSERT_FLOAT_EQ(15, output(1, 0, 0));
+
+    ASSERT_FLOAT_EQ(18, output(0, 0, 1));
+    ASSERT_FLOAT_EQ(18, output(1, 0, 1));
+
+    ASSERT_FLOAT_EQ(21, output(0, 0, 2));
+    ASSERT_FLOAT_EQ(21, output(1, 0, 2));
+
+    ASSERT_FLOAT_EQ(24, output(0, 0, 3));
+    ASSERT_FLOAT_EQ(24, output(1, 0, 3));
+
+    ASSERT_FLOAT_EQ(27, output(0, 0, 4));
+    ASSERT_FLOAT_EQ(27, output(1, 0, 4));
+}
+
+TEST(DenseLayer, weight_initializer_bias_initializer)
+{
+    // Arrange
+    auto device = CNTK::DeviceDescriptor::GPUDevice(0);
+    auto X = CNTK::InputVariable({ 3 }, CNTK::DataType::Float);
+    CNTK::FunctionPtr network = X;
+
+    // Create an input matrix
+    Eigen::Tensor<float, 3> input(3, 1, 5);
+    for (int j = 0; j < 3; j++)
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            input(j, 0, i) = j * 5 + i;
+        }
+    }
+
+    // Act
+    network = Chianti::Layers::DenseLayer(network, device)
+            .numUnits(2)
+            .W(CNTK::ConstantInitializer(0))
+            .b(CNTK::ConstantInitializer(1))
+            .nonLinearity(Chianti::Nonlinearities::linear);
+
+    auto outputVar = network->Output();
+
+    auto inputShape = X.Shape().AppendShape({1, 5});
+    auto outputShape = outputVar.Shape().AppendShape({1, 5});
+
+    Eigen::Tensor<float, 3> output(Chianti::Util::convertShape<3>(outputShape));
+
+    auto inputValue = Chianti::Util::tensorToValue(input);
+    auto outputValue = Chianti::Util::tensorToValue(output);
+
+    std::unordered_map<CNTK::Variable, CNTK::ValuePtr> outputs = {{outputVar, outputValue}};
+
+    network->Forward({{X, inputValue}}, outputs, device);
+
+    ASSERT_FLOAT_EQ(1, output(0, 0, 0));
+    ASSERT_FLOAT_EQ(1, output(1, 0, 0));
+
+    ASSERT_FLOAT_EQ(1, output(0, 0, 1));
+    ASSERT_FLOAT_EQ(1, output(1, 0, 1));
+
+    ASSERT_FLOAT_EQ(1, output(0, 0, 2));
+    ASSERT_FLOAT_EQ(1, output(1, 0, 2));
+
+    ASSERT_FLOAT_EQ(1, output(0, 0, 3));
+    ASSERT_FLOAT_EQ(1, output(1, 0, 3));
+
+    ASSERT_FLOAT_EQ(1, output(0, 0, 4));
+    ASSERT_FLOAT_EQ(1, output(1, 0, 4));
 }
 

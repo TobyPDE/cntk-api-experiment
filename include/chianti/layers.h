@@ -649,20 +649,6 @@ namespace Chianti
         /**
          * Batch normalization layer.
          * TODO: Make it possible to pass eigen tensors for the parameters of the layer.
-
-
-    CNTK_API FunctionPtr BatchNormalization(const Variable& operand,
-                                            const Variable& scale,
-                                            const Variable& bias,
-                                            const Variable& runningMean,
-                                            const Variable& runningInvStd,
-                                            bool spatial,
-                                            double normalizationTimeConstant = 0,
-                                            double blendTimeConstant = 0,
-                                            double epsilon = 0.00001,
-                                            bool useCuDNNEngine = false,
-                                            const std::wstring& name = L"");
-
          */
         class BatchNormLayer : public AbstractNonDeterministicLayer {
         private:
@@ -745,6 +731,104 @@ namespace Chianti
                         0,
                         _epsilon,
                         _useCuDNN);
+
+                return network;
+            }
+        };
+
+        /**
+         * Dense layer or fully connected layer.
+         */
+        class DenseLayer : public AbstractSingleInputLayer {
+        public:
+            typedef DenseLayer Self;
+
+            /*!
+             * The number of units/neurons.
+             */
+            uint64_t _numUnits;
+            /*!
+             * Weight matrix.
+             */
+            Values::CompositeValue<Eigen::Tensor<float, 2>, CNTK::ParameterInitializer> _W;
+            /*!
+             * Bias parameter
+             */
+            Values::CompositeValue<Eigen::Tensor<float, 1>, CNTK::ParameterInitializer, bool> _b;
+            /*!
+             * Non-linearity
+             */
+            std::function<CNTK::FunctionPtr(CNTK::FunctionPtr)> _nonLinearity;
+
+        public:
+            /*!
+             * Initializes a new instance of the <DenseLayer> class.
+             *
+             * @param input The layer's input variables.
+             * @param device The device where the parameters of the layer shall be stored.
+             */
+            explicit DenseLayer(CNTK::Variable input, const CNTK::DeviceDescriptor & device) :
+                AbstractSingleInputLayer(input, device),
+                _numUnits(8),
+                _W(CNTK::HeNormalInitializer()),
+                _b(CNTK::ConstantInitializer(0)),
+                _nonLinearity(Chianti::Nonlinearities::rectify)
+            {}
+
+            // Define the getters and setters for the individual class members
+
+            MAKE_GETTER(numUnits, _numUnits)
+            MAKE_SETTER(numUnits, _numUnits)
+
+            MAKE_GETTER(W, _W)
+            MAKE_SETTER(W, _W)
+
+            MAKE_GETTER(b, _b)
+            MAKE_SETTER(b, _b)
+
+            MAKE_GETTER(nonLinearity, _nonLinearity)
+            MAKE_SETTER(nonLinearity, _nonLinearity)
+
+            /*!
+             * Converts the Chianti layer into a CNTK node.
+             *
+             * @return The CNTK node.
+             */
+            CNTK::FunctionPtr build() const
+            {
+                size_t numInputChannels = this->input.Shape()[this->input.Shape().Rank() - 1];
+
+                // Create the weight parameters
+                CNTK::NDShape weightShape = { _numUnits, numInputChannels };
+                auto weight = resolveParameter<2>(this->_W, weightShape, this->device);
+
+                CNTK::FunctionPtr network = CNTK::Times(weight, this->input);
+
+                // Set up the bias term
+                // --------------------
+                if (!Values::isActive<2>(this->_b) || Values::get<2>(this->_b))
+                {
+                    // Add a bias term
+                    CNTK::NDShape biasShape = { this->_numUnits};
+
+                    // Create the parameter
+                    if (Values::isActive<2>(this->_b))
+                    {
+                        // The user didn't define anything
+                        // Create a 0 initialized parameter
+                        auto biasParams = CNTK::Parameter(biasShape, CNTK::DataType::Float, CNTK::ConstantInitializer(0), this->device);
+                        network = CNTK::Plus(network, biasParams);
+                    }
+                    else
+                    {
+                        // The user specified the bias
+                        auto biasParms = resolveParameter<1>(this->_b, biasShape, this->device);
+                        network = CNTK::Plus(network, biasParms);
+                    }
+                }
+
+                // Apply non-linearity
+                network = this->_nonLinearity(network);
 
                 return network;
             }
